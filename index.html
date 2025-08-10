@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポチ日記</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Yomogi&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Pastel Green Accent -->
+    <!-- Application Structure Plan: A single-page application centered around a primary call-to-action button ("いい子だね！"). This button triggers a modal for quick data entry. The main view is a reverse-chronological timeline of generated "diary entries." This structure was chosen to focus the user's attention on the single, positive action of recording a success, making the experience simple, rewarding, and mobile-first. The user flow is: See success -> Tap button -> Add context -> See positive result. -->
+    <!-- Visualization & Content Choices: The core content is qualitative text (diary entries). The primary "visualization" is the timeline itself, which serves as a visual record of progress. Goal: Reinforce positive behavior. Method: A feed of auto-generated, positive text entries. Interaction: A single button press. Justification: This removes the friction of traditional journaling and reframes the user's focus from negative events to positive ones. The "思い出アルバム" (not implemented in this prototype) would be the next visualization step, summarizing progress over time. No charts are needed as the data is not quantitative. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            /* Wood grain background for a "desk" feel */
+            background-color: #D2B48C;
+            background-image: linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05)),
+                              linear-gradient(45deg, rgba(0,0,0,0.05) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05));
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            color: #5E503F;
+        }
+        .diary-font {
+            font-family: 'Yomogi', cursive;
+        }
+        .notebook {
+            background-color: #FFFBF5;
+            border-radius: 15px;
+            /* Stronger shadow to lift it off the "desk" */
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            /* Subtle border to define the paper edge */
+            border: 1px solid #DCD1C1;
+            border-left: 40px solid #C6AC8F; /* Notebook spine */
+            border-right: 8px solid #C6AC8F;
+        }
+        .diary-card {
+            /* Ruled paper effect */
+            background-image: linear-gradient(to bottom, #FFFBF5 0, #FFFBF5 calc(2.5rem - 1px), #DCD1C1 1px);
+            background-size: 100% 2.5rem;
+        }
+        .diary-text {
+            font-family: 'Yomogi', cursive;
+            font-size: 1.25rem; /* 20px */
+            line-height: 2.5rem; /* Exactly matches background-size */
+            padding-top: 0.5rem; /* Align text to the line */
+        }
+        .paw-icon {
+            display: inline-block;
+            position: relative;
+            width: 20px;
+            height: 20px;
+            transform: rotate(-45deg);
+        }
+        .paw-icon .pad {
+            position: absolute;
+            background-color: currentColor;
+            border-radius: 50%;
+        }
+        .paw-icon .large-pad { width: 10px; height: 10px; bottom: 0; left: 50%; transform: translateX(-50%); }
+        .paw-icon .small-pad-1 { width: 5px; height: 5px; top: 0; left: 0; }
+        .paw-icon .small-pad-2 { width: 5px; height: 5px; top: 2px; left: 10px; }
+        .paw-icon .small-pad-3 { width: 5px; height: 5px; top: 8px; left: -2px; }
+
+        .modal-hidden { opacity: 0; visibility: hidden; transform: scale(0.95); }
+        .modal-visible { opacity: 1; visibility: visible; transform: scale(1); }
+        @keyframes slideInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideInDown 0.5s ease-out forwards; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+        
+        <!-- Notebook Container -->
+        <div id="app" class="notebook w-full max-w-2xl mx-auto">
+            <header class="py-6 text-center border-b-2 border-dashed border-gray-300 mx-6">
+                <h1 class="text-3xl font-bold text-gray-700 flex items-center justify-center gap-2">
+                    <span class="paw-icon text-gray-400"></span>
+                    ポチ日記
+                </h1>
+            </header>
+            <main id="timeline" class="p-6">
+                <!-- Diary entries will be injected here -->
+            </main>
+        </div>
+
+        <!-- Action Button Container -->
+        <div class="w-full max-w-2xl mx-auto pt-8">
+             <button id="add-button" class="w-full h-20 bg-green-200 text-green-800 rounded-2xl shadow-lg flex items-center justify-center text-2xl font-bold transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300" style="background-color: #A8D8B9;">
+                いい子だね！
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300">
+        <div id="modal-backdrop" class="fixed inset-0 bg-black/40"></div>
+        <div class="bg-[#FFFBF5] w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10">
+            <form id="diary-form">
+                <h2 class="text-xl font-bold text-gray-700 text-center mb-4">今日の「いい子」を教えて！</h2>
+                <textarea id="situation-input" rows="3" placeholder="例：お散歩中、バイクが通っても落ち着いてた！" class="w-full p-3 bg-white/80 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"></textarea>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" id="cancel-button" class="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold transition hover:bg-gray-300">キャンセル</button>
+                    <button type="submit" class="w-full px-4 py-3 text-white rounded-lg font-bold transition hover:opacity-90" style="background-color: #A8D8B9;">日記を書く</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const addButton = document.getElementById('add-button');
+            const modal = document.getElementById('modal');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const cancelButton = document.getElementById('cancel-button');
+            const diaryForm = document.getElementById('diary-form');
+            const situationInput = document.getElementById('situation-input');
+            const timeline = document.getElementById('timeline');
+
+            const diaryTemplates = [
+                (userInput) => `聞いて聞いて！今日ね、「${userInput}」ってことがあったんだよ！ご主人様がいっぱい褒めてくれて、しっぽを振っちゃった！嬉しいな。`,
+                (userInput) => `ぼく、頑張ったんだ！「${userInput}」って、ちゃんとできたよ。ご主人様が「えらいね」って頭を撫でてくれたんだ。`,
+                (userInput) => `今日のハイライト！なんと、「${userInput}」んだ。そのあと、特別なおやつをもらえたよ！ラッキー！`,
+                (userInput) => `ちょっと自慢してもいい？「${userInput}」ことができたんだ。ぼく、ちょっと大人になったかも？`,
+                (userInput) => `ご主人様とのお約束、守れたよ！「${userInput}」んだ。褒められるのって、最高だね！`
+            ];
+
+            let diaryEntries = [
+                {
+                    id: 2,
+                    text: '聞いて聞いて！今日ね、「お散歩中、他のワンちゃんに静かに挨拶できた」ってことがあったんだよ！ご主人様がいっぱい褒めてくれて、しっぽを振っちゃった！嬉しいな。',
+                    date: '2025年8月10日 10:30'
+                },
+                {
+                    id: 1,
+                    text: 'ぼく、頑張ったんだ！「ピンポーンって音が鳴ったけど吠えなかった」って、ちゃんとできたよ。ご主人様が「えらいね」って頭を撫でてくれたんだ。',
+                    date: '2025年8月9日 18:15'
+                }
+            ];
+
+            const showModal = () => {
+                modal.classList.remove('modal-hidden');
+                modal.classList.add('modal-visible');
+                situationInput.focus();
+            };
+
+            const hideModal = () => {
+                modal.classList.add('modal-hidden');
+                modal.classList.remove('modal-visible');
+                situationInput.value = '';
+            };
+
+            const renderTimeline = () => {
+                timeline.innerHTML = '';
+                diaryEntries.forEach((entry, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'diary-card';
+                    if (index === 0 && entry.isNew) {
+                        card.classList.add('animate-slide-in');
+                        delete entry.isNew;
+                    }
+                    
+                    card.innerHTML = `
+                        <p class="diary-text text-gray-800">${entry.text}</p>
+                        <div class="text-right text-xs text-gray-400 mt-2 pr-2">${entry.date}</div>
+                    `;
+                    timeline.appendChild(card);
+                });
+            };
+
+            addButton.addEventListener('click', showModal);
+            modalBackdrop.addEventListener('click', hideModal);
+            cancelButton.addEventListener('click', hideModal);
+
+            diaryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const userInput = situationInput.value.trim();
+                if (!userInput) {
+                    situationInput.classList.add('shake');
+                    setTimeout(() => situationInput.classList.remove('shake'), 820);
+                    return;
+                }
+                const template = diaryTemplates[Math.floor(Math.random() * diaryTemplates.length)];
+                const newText = template(userInput);
+                
+                const now = new Date();
+                const newEntry = {
+                    id: Date.now(),
+                    text: newText,
+                    date: `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`,
+                    isNew: true
+                };
+                
+                diaryEntries.unshift(newEntry);
+                hideModal();
+                renderTimeline();
+            });
+            
+            // Paw Icon Renderer
+            document.querySelectorAll('.paw-icon').forEach(icon => {
+                icon.innerHTML = `
+                    <span class="pad large-pad"></span>
+                    <span class="pad small-pad-1"></span>
+                    <span class="pad small-pad-2"></span>
+                    <span class="pad small-pad-3"></span>
+                `;
+            });
+
+            renderTimeline();
+        });
+    </script>
+
+</body>
+</html>
