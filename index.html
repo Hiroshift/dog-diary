@@ -37,15 +37,52 @@
             border-right: 8px solid #C6AC8F;
         }
         .diary-card {
-            /* Ruled paper effect */
-            background-image: linear-gradient(to bottom, #FFFBF5 0, #FFFBF5 calc(2.5rem - 1px), #DCD1C1 1px);
-            background-size: 100% 2.5rem;
+            /* Ruled paper with subtle paper grain */
+            background-image:
+                linear-gradient(to bottom, #FFFBF5 0, #FFFBF5 calc(2.5rem - 1px), #DCD1C1 1px),
+                radial-gradient(rgba(0,0,0,0.03) 1px, rgba(0,0,0,0) 1.5px);
+            background-size: 100% 2.5rem, 12px 12px;
+            background-position: 0 0.5rem, 0 0;
+            padding-top: 0.5rem; /* align text to the line */
+            padding-bottom: 0.5rem; /* keep bottom rule visible */
+            padding-left: 2.5rem; /* space for left margin line */
+            position: relative;
+        }
+        .diary-card::before {
+            /* Left red margin line */
+            content: "";
+            position: absolute;
+            top: 0.25rem; bottom: 0.25rem;
+            left: 1.5rem;
+            width: 2px;
+            background: linear-gradient(
+                to bottom,
+                rgba(228, 177, 177, 0) 0%,
+                #e4b1b1 10%,
+                #e4b1b1 90%,
+                rgba(228, 177, 177, 0) 100%
+            );
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .diary-card::after {
+            /* Small folded corner */
+            content: "";
+            position: absolute;
+            top: 0.35rem; right: 0.35rem;
+            width: 0; height: 0;
+            border-top: 12px solid rgba(0,0,0,0.06);
+            border-left: 12px solid transparent;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.08));
+            pointer-events: none;
         }
         .diary-text {
             font-family: 'Yomogi', cursive;
             font-size: 1.25rem; /* 20px */
             line-height: 2.5rem; /* Exactly matches background-size */
-            padding-top: 0.5rem; /* Align text to the line */
+            padding-top: 0; /* handled by .diary-card */
+            margin: 0; /* avoid default p margins breaking alignment */
+            text-shadow: 0 0 0.5px rgba(0,0,0,0.04); /* subtle ink bleed */
         }
         .paw-icon {
             display: inline-block;
@@ -78,6 +115,67 @@
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
         .shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+
+        /* Enhancements appended for richer UI */
+        :root {
+            --color-paper: #FFFBF5;
+            --color-ink: #5E503F;
+            --color-spine: #C6AC8F;
+            --color-accent: #A8D8B9;
+            --sticker-green: linear-gradient(135deg, #C3F4D9 0%, #A8D8B9 100%);
+            --sticker-pink: linear-gradient(135deg, #FFD6E7 0%, #F5AFC7 100%);
+            --sticker-yellow: linear-gradient(135deg, #FFF2B3 0%, #FFE27A 100%);
+            --sticker-blue: linear-gradient(135deg, #CDEBFF 0%, #A8D7FF 100%);
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.18) 100%);
+        }
+        .notebook {
+            background-color: var(--color-paper);
+            border-left-color: var(--color-spine);
+            border-right-color: var(--color-spine);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh; /* prevent unbounded growth */
+        }
+        .notebook::before,
+        .notebook::after {
+            content: "";
+            position: absolute;
+            left: 0; right: 0;
+            height: 10px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+            background: var(--color-paper);
+            z-index: -1;
+        }
+        .notebook::before { bottom: -8px; transform: translateX(-12px) rotate(-0.4deg); }
+        .notebook::after { bottom: -16px; transform: translateX(10px) rotate(0.6deg); }
+        /* Scrollable timeline within notebook */
+        #timeline { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .diary-card-container { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .diary-card-container:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,0.15); }
+        .avatar {
+            width: 56px; height: 56px; border-radius: 9999px;
+            background: linear-gradient(135deg, #FFF 0%, #F4ECE0 100%);
+            box-shadow: inset 0 0 0 2px #E8DCCB, 0 4px 12px rgba(0,0,0,0.15);
+            display: grid; place-items: center; font-size: 28px;
+        }
+        .washi {
+            position: absolute; width: 80px; height: 18px;
+            background: repeating-linear-gradient(45deg, rgba(168,216,185,0.7) 0 8px, rgba(255,255,255,0.7) 8px 16px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            border-radius: 3px; transform: rotate(-8deg); mix-blend-mode: multiply;
+        }
+        .washi.right { right: 2.75rem; transform: rotate(8deg); }
+        .washi.left { left: 2.75rem; }
+        /* sticker removed per UX request */
     </style>
 </head>
 <body class="antialiased">
@@ -86,11 +184,17 @@
         
         <!-- Notebook Container -->
         <div id="app" class="notebook w-full max-w-2xl mx-auto">
-            <header class="py-6 text-center border-b-2 border-dashed border-gray-300 mx-6">
-                <h1 class="text-3xl font-bold text-gray-700 flex items-center justify-center gap-2">
-                    <span class="paw-icon text-gray-400"></span>
-                    ポチ日記
-                </h1>
+            <header class="relative py-6 text-center border-b-2 border-dashed border-gray-300 mx-6">
+                <div class="washi left -top-2"></div>
+                <div class="washi right -top-3"></div>
+                <div class="flex flex-col items-center gap-2">
+                    <div class="avatar">🐶</div>
+                    <h1 class="text-3xl font-bold text-gray-700 flex items-center justify-center gap-2 tracking-wide">
+                        <span class="paw-icon text-gray-400"></span>
+                        ポチ日記
+                    </h1>
+                    <p class="text-sm text-gray-500">いい子な毎日のきろく</p>
+                </div>
             </header>
             <main id="timeline" class="p-6">
                 <!-- Diary entries will be injected here -->
@@ -99,7 +203,7 @@
 
         <!-- Action Button Container -->
         <div class="w-full max-w-2xl mx-auto pt-8">
-             <button id="add-button" class="w-full h-20 bg-green-200 text-green-800 rounded-2xl shadow-lg flex items-center justify-center text-2xl font-bold transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300" style="background-color: #A8D8B9;">
+         <button id="add-button" class="w-full h-20 text-green-900 rounded-2xl shadow-xl flex items-center justify-center text-2xl font-bold transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300" style="background-image: linear-gradient(135deg, #C3F4D9 0%, #A8D8B9 100%);">
                 いい子だね！
             </button>
         </div>
@@ -111,7 +215,11 @@
         <div class="bg-[#FFFBF5] w-full max-w-sm rounded-2xl shadow-2xl p-6 z-10">
             <form id="diary-form">
                 <h2 class="text-xl font-bold text-gray-700 text-center mb-4">今日の「いい子」を教えて！</h2>
-                <textarea id="situation-input" rows="3" placeholder="例：お散歩中、バイクが通っても落ち着いてた！" class="w-full p-3 bg-white/80 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"></textarea>
+                <textarea id="situation-input" rows="3" maxlength="120" placeholder="例：お散歩中、バイクが通っても落ち着いてた！" class="w-full p-3 bg-white/80 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"></textarea>
+                <div class="flex items-center justify-between mt-2 text-xs text-gray-400">
+                    <span id="char-count">0/120</span>
+                    <span>🐾</span>
+                </div>
                 <div class="flex gap-3 mt-6">
                     <button type="button" id="cancel-button" class="w-full px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold transition hover:bg-gray-300">キャンセル</button>
                     <button type="submit" class="w-full px-4 py-3 text-white rounded-lg font-bold transition hover:opacity-90" style="background-color: #A8D8B9;">日記を書く</button>
@@ -128,6 +236,7 @@
             const cancelButton = document.getElementById('cancel-button');
             const diaryForm = document.getElementById('diary-form');
             const situationInput = document.getElementById('situation-input');
+            const charCount = document.getElementById('char-count');
             const timeline = document.getElementById('timeline');
 
             const diaryTemplates = [
@@ -138,47 +247,67 @@
                 (userInput) => `ご主人様とのお約束、守れたよ！「${userInput}」んだ。褒められるのって、最高だね！`
             ];
 
-            let diaryEntries = [
-                {
-                    id: 2,
-                    text: '聞いて聞いて！今日ね、「お散歩中、他のワンちゃんに静かに挨拶できた」ってことがあったんだよ！ご主人様がいっぱい褒めてくれて、しっぽを振っちゃった！嬉しいな。',
-                    date: '2025年8月10日 10:30'
-                },
-                {
-                    id: 1,
-                    text: 'ぼく、頑張ったんだ！「ピンポーンって音が鳴ったけど吠えなかった」って、ちゃんとできたよ。ご主人様が「えらいね」って頭を撫でてくれたんだ。',
-                    date: '2025年8月9日 18:15'
-                }
-            ];
+            const STORAGE_KEY = 'dogDiaryEntries';
+            let diaryEntries = [];
+
+            const saveEntries = () => {
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryEntries)); } catch (_) {}
+            };
+            const loadEntries = () => {
+                try {
+                    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                    if (Array.isArray(saved) && saved.length) {
+                        diaryEntries = saved;
+                        return;
+                    }
+                } catch (_) {}
+                diaryEntries = [
+                    {
+                        id: 2,
+                        text: '聞いて聞いて！今日ね、「お散歩中、他のワンちゃんに静かに挨拶できた」ってことがあったんだよ！ご主人様がいっぱい褒めてくれて、しっぽを振っちゃった！嬉しいな。',
+                        date: '2025年8月10日 10:30'
+                    },
+                    {
+                        id: 1,
+                        text: 'ぼく、頑張ったんだ！「ピンポーンって音が鳴ったけど吠えなかった」って、ちゃんとできたよ。ご主人様が「えらいね」って頭を撫でてくれたんだ。',
+                        date: '2025年8月9日 18:15'
+                    }
+                ];
+            };
 
             const showModal = () => {
                 modal.classList.remove('modal-hidden');
                 modal.classList.add('modal-visible');
                 situationInput.focus();
+                if (typeof updateCharCount === 'function') updateCharCount();
             };
 
             const hideModal = () => {
                 modal.classList.add('modal-hidden');
                 modal.classList.remove('modal-visible');
                 situationInput.value = '';
+                if (typeof updateCharCount === 'function') updateCharCount();
             };
 
             const renderTimeline = () => {
                 timeline.innerHTML = '';
                 diaryEntries.forEach((entry, index) => {
                     const card = document.createElement('div');
-                    card.className = 'diary-card';
+                    card.className = 'diary-card-container relative rounded-xl shadow-md bg-white/70 overflow-hidden';
                     if (index === 0 && entry.isNew) {
                         card.classList.add('animate-slide-in');
                         delete entry.isNew;
                     }
                     
                     card.innerHTML = `
-                        <p class="diary-text text-gray-800">${entry.text}</p>
-                        <div class="text-right text-xs text-gray-400 mt-2 pr-2">${entry.date}</div>
+                        <div class="diary-card relative">
+                            <p class="diary-text text-gray-800 px-4">${entry.text}</p>
+                            <div class="text-right text-xs text-gray-400 mt-2 pr-4 pb-3">${entry.date}</div>
+                        </div>
                     `;
                     timeline.appendChild(card);
                 });
+                saveEntries();
             };
 
             addButton.addEventListener('click', showModal);
@@ -208,6 +337,14 @@
                 hideModal();
                 renderTimeline();
             });
+
+            const updateCharCount = () => {
+                const current = situationInput.value.length;
+                const limit = situationInput.maxLength || 120;
+                const counter = `${current}/${limit}`;
+                if (charCount) { charCount.textContent = counter; }
+            };
+            situationInput.addEventListener('input', updateCharCount);
             
             // Paw Icon Renderer
             document.querySelectorAll('.paw-icon').forEach(icon => {
@@ -219,7 +356,9 @@
                 `;
             });
 
+            loadEntries();
             renderTimeline();
+            updateCharCount();
         });
     </script>
 
